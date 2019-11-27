@@ -73,6 +73,11 @@ namespace VisualStudioBuildExtension
             }
 
             await JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (this.dte2.Solution == null)
+            {
+                return;
+            }
+
             string solutionFilePath = this.dte2.Solution.FullName;
             string solutionFolder = Path.GetDirectoryName(solutionFilePath);
             string solutionFileName = Path.GetFileNameWithoutExtension(solutionFilePath);
