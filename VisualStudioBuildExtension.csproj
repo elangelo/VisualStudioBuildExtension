@@ -13,8 +13,8 @@
     <ProjectGuid>{B551CE8B-22D7-40C2-9C8B-E085D1B3628F}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>DamVstsBuildExtension</RootNamespace>
-    <AssemblyName>DamVstsBuildExtension</AssemblyName>
+    <RootNamespace>VisualStudioBuildExtension</RootNamespace>
+    <AssemblyName>VisualStudioBuildExtension</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <UseCodebase>true</UseCodebase>
