@@ -7,7 +7,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Management.Automation;
-using System.Management.Automation.Runspaces;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Task = System.Threading.Tasks.Task;
@@ -73,7 +72,7 @@ namespace VisualStudioBuildExtension
             }
 
             await JoinableTaskFactory.SwitchToMainThreadAsync();
-            if (this.dte2.Solution == null)
+            if (this.dte2.Solution == null || string.IsNullOrEmpty(this.dte2.Solution.FullName))
             {
                 return;
             }
