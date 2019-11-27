@@ -72,6 +72,7 @@ namespace VisualStudioBuildExtension
                 return;
             }
 
+            await JoinableTaskFactory.SwitchToMainThreadAsync();
             string solutionFilePath = this.dte2.Solution.FullName;
             string solutionFolder = Path.GetDirectoryName(solutionFilePath);
             string solutionFileName = Path.GetFileNameWithoutExtension(solutionFilePath);
@@ -110,8 +111,7 @@ namespace VisualStudioBuildExtension
         async Task CreatePaneAsync(Guid paneGuid, string title, bool visible, bool clearWithSolution)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            IVsOutputWindow output =
-                (IVsOutputWindow)GetService(typeof(SVsOutputWindow));
+            IVsOutputWindow output = (await this.GetServiceAsync(typeof(SVsOutputWindow)).ConfigureAwait(false)) as IVsOutputWindow;
             Assumes.Present(output);
             IVsOutputWindowPane pane;
 
