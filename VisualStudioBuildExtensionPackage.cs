@@ -46,13 +46,15 @@ namespace VisualStudioBuildExtension
         public const string PackageGuidString = "575a3420-6dfc-4a00-8e34-38a8057273ad";
         private DTE2 dte2;
         private IVsSolutionBuildManager2 solutionBuildManager;
-        private bool hasPrebuild;
         private Guid paneGuid = Guid.Parse("575a3420-6dfd-4a00-8e34-38a8057273ad");
-        public string PreBuildScript { get; private set; }
-        private bool hasPostbuild;
-        public string PostBuildScript { get; private set; }
         private uint updateSolutionEventsCookie;
-
+        private bool hasPrebuild;
+        private bool hasPostbuild;
+        private string preBuildFile;
+        private string postBuildFile;
+        private string solutionFolder;
+        private string solutionFileName;
+        
         #region Package Members
 
         /// <summary>
@@ -64,7 +66,7 @@ namespace VisualStudioBuildExtension
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            this.dte2 = (await this.GetServiceAsync(typeof(SDTE)).ConfigureAwait(false)) as DTE2;
+            this.dte2 = (await GetServiceAsync(typeof(SDTE)).ConfigureAwait(false)) as DTE2;
             if (this.dte2 == null)
             {
                 Trace.TraceError("VSPackage.Initialize() could not obtain DTE2 reference");
@@ -78,23 +80,22 @@ namespace VisualStudioBuildExtension
             }
 
             string solutionFilePath = this.dte2.Solution.FullName;
-            string solutionFolder = Path.GetDirectoryName(solutionFilePath);
-            string solutionFileName = Path.GetFileNameWithoutExtension(solutionFilePath);
+            solutionFolder = Path.GetDirectoryName(solutionFilePath);
+            solutionFileName = Path.GetFileNameWithoutExtension(solutionFilePath);
+            preBuildFile = Path.Combine(solutionFolder, $"{solutionFileName}.PreBuild.ps1");
 
-            var preBuildFile = Path.Combine(solutionFolder, $"{solutionFileName}.PreBuild.ps1");
             if (File.Exists(preBuildFile))
             {
                 Trace.WriteLine("prebuild.ps1 found");
                 this.hasPrebuild = true;
-                this.PreBuildScript = $"&{{ {File.ReadAllText(preBuildFile)} }} -Verbose -Debug *>&1";
             }
-            var postBuildFile = Path.Combine(solutionFolder, $"{solutionFileName}.PostBuild.ps1");
+            postBuildFile = Path.Combine(solutionFolder, $"{solutionFileName}.PostBuild.ps1");
             if (File.Exists(postBuildFile))
             {
                 Trace.WriteLine("postbuild.ps1 found");
                 this.hasPostbuild = true;
-                this.PostBuildScript = $"&{{ {File.ReadAllText(postBuildFile)} }} -Verbose -Debug *>&1";
             }
+
             if (this.hasPostbuild == false && this.hasPrebuild == false)
             {
                 return;
@@ -104,7 +105,7 @@ namespace VisualStudioBuildExtension
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
-            this.solutionBuildManager = (await this.GetServiceAsync(typeof(SVsSolutionBuildManager)).ConfigureAwait(false)) as IVsSolutionBuildManager2;
+            this.solutionBuildManager = (await GetServiceAsync(typeof(SVsSolutionBuildManager)).ConfigureAwait(false)) as IVsSolutionBuildManager2;
             if (this.solutionBuildManager != null)
             {
                 this.solutionBuildManager.AdviseUpdateSolutionEvents(this, out this.updateSolutionEventsCookie);
@@ -115,7 +116,7 @@ namespace VisualStudioBuildExtension
         async Task CreatePaneAsync(Guid paneGuid, string title, bool visible, bool clearWithSolution)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-            IVsOutputWindow output = (await this.GetServiceAsync(typeof(SVsOutputWindow)).ConfigureAwait(false)) as IVsOutputWindow;
+            IVsOutputWindow output = (await GetServiceAsync(typeof(SVsOutputWindow)).ConfigureAwait(false)) as IVsOutputWindow;
             Assumes.Present(output);
             IVsOutputWindowPane pane;
 
@@ -220,7 +221,8 @@ namespace VisualStudioBuildExtension
             ThreadHelper.ThrowIfNotOnUIThread();
             if (hasPrebuild)
             {
-                var success = runPowershell("PreBuild", PreBuildScript);
+                var preBuildScript = $"&{{ {File.ReadAllText(preBuildFile)} }} -Verbose -Debug *>&1";
+                var success = runPowershell("PreBuild", preBuildScript);
                 log(success.ToString());
             }
             return 0;
@@ -231,7 +233,8 @@ namespace VisualStudioBuildExtension
             ThreadHelper.ThrowIfNotOnUIThread();
             if (hasPostbuild)
             {
-                bool success = runPowershell("PostBuild", PostBuildScript);
+                var postBuildScript = $"&{{ {File.ReadAllText(postBuildFile)} }} -Verbose -Debug *>&1";
+                bool success = runPowershell("PostBuild", postBuildScript);
                 log(success.ToString());
             }
             return 0;
